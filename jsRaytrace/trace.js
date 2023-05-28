@@ -3,12 +3,14 @@ canvas.style.height = CANV_HEIGHT + "px";
 canvas.width = CANV_WIDTH;
 canvas.height = CANV_HEIGHT;
 
+//note: switch colors to rgba instead?
 
 var render_objects = [
     // x,y,z,size,Color(hue,lightness)
-    new Sphere(150, 250, 0, 50, new Color(50, 100)),
+    new Sphere(90, 300, 0, 110, new Color(50, 100)),
     new Sphere(300, 250, 0, 100, new Color(10, 100)),
     new Sphere(170, 120, 0, 75, new Color(80, 100)),
+    //new Plane(250, 250, 25, 100, new Color(80, 100))
 ];
 
 var lights = [
@@ -24,10 +26,10 @@ canvas.addEventListener('mousemove', (event) => {
     run()
 });
 
-
+shader_init()
 
 // x,y,z
-var camera = new Point(0, 0, 100);
+var camera = new Point(0, 0, 200);
 
 function run() {
 
@@ -64,23 +66,25 @@ function run() {
             }
         }
     }
-    console.log("done")
+    //console.log("done")
 }
 
 function collidedWithObject({ collisionPoint, closestZ, collisionObj, camera }) {
     // Set the pixel color to our first collision
     // Note: any further bounce will change this
-    var return_color = collisionObj.color.copy();
+    
+    //var return_color = collisionObj.color.copy();
+
+    // gets the color at the collision point
+    var return_color = collisionObj.colorAtPoint(collisionPoint);
+    
     // We haven't hit a light yet
     return_color.light = AMBIENT_LIGHT;
 
     // we start at the collision
     var rayPosition = collisionPoint
     // The direction out ray should go now
-    var rayVector = collisionObj.bounceAngle(rayPosition, Vector.getVector(camera, collisionObj.toPoint()));
-    // Our ray will start at the point of collision
-
-
+    var rayVector = collisionObj.bounceAngle(rayPosition, Vector.getVector(camera, collisionPoint));
     // The vector will have varing magnitudes based on it's collision, normalize it so we dont travel to fast
     rayVector = Vector.autoNormalize(rayVector)
 
@@ -94,14 +98,28 @@ function collidedWithObject({ collisionPoint, closestZ, collisionObj, camera }) 
 
     for (var age = 0; age < RAY_LIFESPAN; age++) {
 
+        var bounces = 0
         // Check collision for any object
-        render_objects.forEach(element => {
+        
+        render_objects.every(element => {
+            //stop after max bounces
+            if(bounces >= MAX_BOUNCES) return false
+
             // If we collide with any object
             if (element.isColliding(rayPosition)) {
                 // re-orient our ray
                 rayVector = element.bounceAngle(rayPosition, rayVector)
-                return_color.hue = element.color.hue
+                rayVector = Vector.autoNormalize(rayVector)
+                
+                //return_color.hue = element.color.hue
+                
+                // copy the hue of the collision point
+                return_color.hue = element.colorAtPoint(collisionPoint).hue
+                return false
             }
+
+            bounces++
+            return true
         })
 
         // Check collision for any light source
@@ -110,7 +128,7 @@ function collidedWithObject({ collisionPoint, closestZ, collisionObj, camera }) 
             var d = light.distance(rayPosition);
             if (d < light.size) {
                 noLightHits = false;
-                return_color.light = (100 + AMBIENT_LIGHT) - (d / light.size * 100)
+                return_color.light = (110 + AMBIENT_LIGHT) - (d / light.size * 100)
                 //blacklist this light for the current pixel, we dont want to add up the same light
                 allLights.splice(ind, 1)
             }
@@ -153,6 +171,43 @@ function shadows({ collisionObj, collisionPoint }) {
         }
 
         if(noCollision) lightamt += 20;
+    })
+    return lightamt;
+}
+
+
+//Shadow bounce test
+//something is wrong with this: the shadows are square and not bouncing
+function shadows2({ collisionObj, collisionPoint }) {
+    collisionPoint.z += 1;
+    var lightamt = 0;
+    lights.forEach(light => {
+        // Get the vector from the collision point to the light 
+        var movement_vector = Vector.getVector(collisionPoint, light);
+        movement_vector = Vector.autoNormalize(movement_vector)
+
+        var position = collisionPoint.copy()
+
+        // move along the path until we reach the light or time out
+        var age = 0
+        while (!light.isColliding(position) && age < RAY_LIFESPAN) {
+            // Check collision for any object
+            render_objects.forEach(element => {
+                // If we collide with any object
+                // compare pointers and exclude if touching the same obj
+                if (element.isColliding(position)) 
+                {
+                    movement_vector = element.bounceAngle(position, movement_vector);
+                    movement_vector = Vector.autoNormalize(movement_vector)
+                    position.move(movement_vector)
+                }
+            })
+
+            position.move(movement_vector)
+            age++
+        }
+
+        if(light.isColliding(position)) lightamt += 5;
     })
     return lightamt;
 }

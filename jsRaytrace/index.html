@@ -8,10 +8,27 @@
 </head>
 <body>
     <canvas id="canvas"  style="border-color: black; border-width: 1px; border-style: dashed;"></canvas>
+    <button onclick="run()">Run</button>
+    <br>
+    <button onclick="renderStyle(1)">style 1</button>
+    <button onclick="renderStyle(2)">style 2</button>
+    <button onclick="renderStyle(3)">style 3</button>
+    <button onclick="renderStyle(4)">style 4</button>
+    <br>
+    <p>bounces</p>
+    <input type="range" min="0" max="50" value="10" class="slider" id="bounces">
+    <br>
+    <p id="bounces_out">10</p>
+    <p>resolution</p>
+    <input type="range" min="10" max="500" value="250" class="slider" id="res">
+    <br>
+
     <script src="def.js"></script>
     <script src="vectors.js"></script>
     <script src="objects.js"></script>
+    <script src="shader.js"></script>
     <script src="trace.js"></script>
-    <button onclick="run()">Run</button>
+
+    <!-- <input placeholder="render width (1-500)" -->
 </body>
 </html>
